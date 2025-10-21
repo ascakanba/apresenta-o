@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">✏️ Editar Prato</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="nome" class="form-label">Nome do Prato</label>
+                            <input type="text" class="form-control" id="nome" name="nome" 
+                                   value="{{ marmita.nome }}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="descricao" name="descricao" rows="3" required>{{ marmita.descricao }}</textarea>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="preco" class="form-label">Preço (R$)</label>
+                                    <input type="number" class="form-control" id="preco" name="preco" 
+                                           step="0.01" min="0" value="{{ marmita.preco }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="categoria" class="form-label">Categoria</label>
+                                    <select class="form-select" id="categoria" name="categoria" required>
+                                        <option value="fitness" {% if marmita.categoria == 'fitness' %}selected{% endif %}>Fitness</option>
+                                        <option value="vegetariana" {% if marmita.categoria == 'vegetariana' %}selected{% endif %}>Vegetariana</option>
+                                        <option value="vegana" {% if marmita.categoria == 'vegana' %}selected{% endif %}>Vegana</option>
+                                        <option value="lowcarb" {% if marmita.categoria == 'lowcarb' %}selected{% endif %}>Low Carb</option>
+                                        <option value="kids" {% if marmita.categoria == 'kids' %}selected{% endif %}>Kids</option>
+                                        <option value="tradicional" {% if marmita.categoria == 'tradicional' %}selected{% endif %}>Tradicional</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="tamanho" class="form-label">Tamanho</label>
+                            <select class="form-select" id="tamanho" name="tamanho" required>
+                                <option value="pequena" {% if marmita.tamanho == 'pequena' %}selected{% endif %}>Pequena</option>
+                                <option value="media" {% if marmita.tamanho == 'media' %}selected{% endif %}>Média</option>
+                                <option value="grande" {% if marmita.tamanho == 'grande' %}selected{% endif %}>Grande</option>
+                                <option value="familia" {% if marmita.tamanho == 'familia' %}selected{% endif %}>Família</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="disponivel" name="disponivel" 
+                                   {% if marmita.disponivel %}checked{% endif %}>
+                            <label class="form-check-label" for="disponivel">Disponível para venda</label>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                💾 Salvar Alterações
+                            </button>
+                            <a href="{{ url_for('meus_pratos') }}" class="btn btn-outline-secondary">
+                                ↩️ Voltar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

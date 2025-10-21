@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">🍽️ Adicionar Novo Prato</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="nome" class="form-label">Nome do Prato</label>
+                            <input type="text" class="form-control" id="nome" name="nome" required 
+                                   placeholder="Ex: Marmita Fitness Frango">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="descricao" name="descricao" rows="3" required
+                                      placeholder="Descreva os ingredientes e características do prato"></textarea>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="preco" class="form-label">Preço (R$)</label>
+                                    <input type="number" class="form-control" id="preco" name="preco" 
+                                           step="0.01" min="0" required placeholder="25.90">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="categoria" class="form-label">Categoria</label>
+                                    <select class="form-select" id="categoria" name="categoria" required>
+                                        <option value="">Selecione uma categoria</option>
+                                        <option value="fitness">Fitness</option>
+                                        <option value="vegetariana">Vegetariana</option>
+                                        <option value="vegana">Vegana</option>
+                                        <option value="lowcarb">Low Carb</option>
+                                        <option value="kids">Kids</option>
+                                        <option value="tradicional">Tradicional</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="tamanho" class="form-label">Tamanho</label>
+                            <select class="form-select" id="tamanho" name="tamanho" required>
+                                <option value="">Selecione o tamanho</option>
+                                <option value="pequena">Pequena</option>
+                                <option value="media">Média</option>
+                                <option value="grande">Grande</option>
+                                <option value="familia">Família</option>
+                            </select>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                ✅ Adicionar Prato
+                            </button>
+                            <a href="{{ url_for('cardapio') }}" class="btn btn-outline-secondary">
+                                ↩️ Voltar ao Cardápio
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

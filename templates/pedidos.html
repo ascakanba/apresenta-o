@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="mb-4">Meus Pedidos</h1>
+
+{% if pedidos %}
+    {% for pedido in pedidos %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h5 class="card-title">Pedido #{{ pedido.id }}</h5>
+                    <p class="card-text">
+                        <strong>Data:</strong> {{ pedido.data_pedido.strftime('%d/%m/%Y %H:%M') }}<br>
+                        <strong>Status:</strong> 
+                        <span class="badge 
+                            {% if pedido.status == 'entregue' %}bg-success
+                            {% elif pedido.status == 'cancelado' %}bg-danger
+                            {% else %}bg-warning{% endif %}">
+                            {{ pedido.status|title }}
+                        </span><br>
+                        <strong>Total:</strong> R$ {{ "%.2f"|format(pedido.total) }}
+                    </p>
+                </div>
+                <a href="#" class="btn btn-outline-success btn-sm">Ver Detalhes</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="text-center py-5">
+        <h3>Nenhum pedido encontrado</h3>
+        <p>Faça seu primeiro pedido no nosso cardápio!</p>
+        <a href="{{ url_for('cardapio') }}" class="btn btn-success">Ver Cardápio</a>
+    </div>
+{% endif %}
+{% endblock %}

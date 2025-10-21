@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section bg-light rounded p-5 mb-5">
+    <div class="row align-items-center">
+        <div class="col-md-6">
+            <h1 class="display-4 fw-bold text-success">
+                Marmitas Prontas para sua Semana
+            </h1>
+            <p class="lead">Pratique uma alimentação saudável sem complicação. Receba marmitas deliciosas e balanceadas na sua casa.</p>
+            <a href="{{ url_for('cardapio') }}" class="btn btn-success btn-lg">Ver Cardápio</a>
+        </div>
+        <div class="col-md-6 text-center">
+            <span style="font-size: 8rem;">🍱</span>
+        </div>
+    </div>
+</section>
+
+<!-- Destaques -->
+<section class="mb-5">
+    <h2 class="text-center mb-4">Marmitas em Destaque</h2>
+    <div class="row">
+        {% for marmita in marmitas %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow">
+                <div class="card-body text-center">
+                    <div class="marmita-icon mb-3" style="font-size: 3rem;">
+                        {% if marmita.categoria == 'fitness' %}💪
+                        {% elif marmita.categoria == 'vegetariana' %}🌱
+                        {% elif marmita.categoria == 'lowcarb' %}🥑
+                        {% else %}🍴{% endif %}
+                    </div>
+                    <h5 class="card-title">{{ marmita.nome }}</h5>
+                    <p class="card-text text-muted">{{ marmita.descricao }}</p>
+                    <div class="mt-auto">
+                        <span class="h5 text-success">R$ {{ "%.2f"|format(marmita.preco) }}</span>
+                        <br>
+                        <small class="text-muted">{{ marmita.tamanho|title }}</small>
+                    </div>
+                    {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('adicionar_carrinho', marmita_id=marmita.id) }}" class="btn btn-outline-success mt-3">Adicionar</a>
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="btn btn-outline-success mt-3">Fazer Login</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- Benefícios -->
+<section class="bg-light rounded p-5">
+    <h2 class="text-center mb-4">Por que escolher o Prato Feito?</h2>
+    <div class="row text-center">
+        <div class="col-md-4 mb-3">
+            <div class="h1">🥗</div>
+            <h5>Alimentação Saudável</h5>
+            <p>Pratos balanceados por nutricionistas</p>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="h1">🚚</div>
+            <h5>Entrega em Casa</h5>
+            <p>Receba suas marmitas fresquinhas</p>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="h1">💸</div>
+            <h5>Preço Acessível</h5>
+            <p>Qualidade que cabe no seu bolso</p>
+        </div>
+    </div>
+</section>
+{% endblock %}
