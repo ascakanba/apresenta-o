@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+import os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'sua_chave_secreta_aqui_prato_feito'
@@ -234,4 +235,7 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         add_sample_data()
-    app.run(debug=True)
+    
+    # CORREÇÃO PARA O RENDER
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
