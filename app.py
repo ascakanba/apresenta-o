@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -13,7 +13,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
-login_manager.login_message = 'Por favor, faça login.'
+login_manager.login_message = 'Por favor, faça login para acessar esta página.'
 
 # Models
 class User(UserMixin, db.Model):
@@ -50,7 +50,11 @@ class ItemPedido(db.Model):
     marmita_id = db.Column(db.Integer, db.ForeignKey('marmita.id'), nullable=False)
     quantidade = db.Column(db.Integer, nullable=False)
     preco_unitario = db.Column(db.Float, nullable=False)
+    # NOVO: Status individual para cada item da comanda
+    status_item = db.Column(db.String(20), default='enviando_restaurante')  # enviando_restaurante, em_andamento, entregando, concluido
+    observacoes = db.Column(db.Text)
     marmita = db.relationship('Marmita', backref=db.backref('itens_pedido', lazy=True))
+    pedido = db.relationship('Pedido', backref=db.backref('itens', lazy=True))
 
 class Empresa(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -61,9 +65,13 @@ class Empresa(UserMixin, db.Model):
 
 @login_manager.user_loader
 def load_user(user_id):
-    user = User.query.get(int(user_id))
-    if user: return user
-    return Empresa.query.get(int(user_id))
+    # Corrigindo o warning do SQLAlchemy 2.0
+    return db.session.get(User, int(user_id)) or db.session.get(Empresa, int(user_id))
+
+# Adicionar hasattr ao contexto dos templates
+@app.context_processor
+def utility_processor():
+    return dict(hasattr=hasattr)
 
 # Funções auxiliares
 def user_exists(username, email):
@@ -71,6 +79,23 @@ def user_exists(username, email):
 
 def empresa_exists(nome, email):
     return Empresa.query.filter_by(nome=nome).first() or Empresa.query.filter_by(email=email).first()
+
+# Funções do carrinho
+def get_carrinho():
+    if 'carrinho' not in session:
+        session['carrinho'] = []
+    return session['carrinho']
+
+def salvar_carrinho(carrinho):
+    session['carrinho'] = carrinho
+    session.modified = True
+
+def calcular_total_carrinho():
+    carrinho = get_carrinho()
+    total = 0
+    for item in carrinho:
+        total += item['preco'] * item['quantidade']
+    return total
 
 # Rotas principais
 @app.route('/')
@@ -110,7 +135,7 @@ def login():
         if empresa and check_password_hash(empresa.password, password):
             login_user(empresa)
             flash(f'Bem-vindo, {empresa.nome}!', 'success')
-            return redirect(url_for('index'))
+            return redirect(url_for('area_empresa'))
         
         flash('Usuário/Empresa ou senha incorretos!', 'error')
     return render_template('login.html')
@@ -119,6 +144,7 @@ def login():
 @login_required
 def logout():
     logout_user()
+    session.pop('carrinho', None)
     flash('Logout realizado!', 'success')
     return redirect(url_for('index'))
 
@@ -194,27 +220,205 @@ def excluir_prato(prato_id):
     flash(f'Prato "{marmita.nome}" excluído!', 'success')
     return redirect(url_for('meus_pratos'))
 
-# Rotas simples
+# Rotas do carrinho e pedidos - OBRIGATÓRIO ESTAR LOGADO
 @app.route('/adicionar_carrinho/<int:marmita_id>')
 @login_required
 def adicionar_carrinho(marmita_id):
     marmita = Marmita.query.get_or_404(marmita_id)
+    
+    if not marmita.disponivel:
+        flash('Esta marmita não está disponível no momento.', 'error')
+        return redirect(url_for('cardapio'))
+    
+    quantidade = 1  # Quantidade fixa para simplificar
+    
+    carrinho = get_carrinho()
+    
+    # Verifica se o item já está no carrinho
+    item_existente = None
+    for item in carrinho:
+        if item['marmita_id'] == marmita_id:
+            item_existente = item
+            break
+    
+    if item_existente:
+        item_existente['quantidade'] += quantidade
+    else:
+        carrinho.append({
+            'marmita_id': marmita.id,
+            'nome': marmita.nome,
+            'preco': float(marmita.preco),
+            'quantidade': quantidade,
+            'imagem': marmita.imagem
+        })
+    
+    salvar_carrinho(carrinho)
     flash(f'{marmita.nome} adicionado ao carrinho!', 'success')
     return redirect(url_for('cardapio'))
 
+@app.route('/remover_carrinho/<int:index>')
+@login_required
+def remover_carrinho(index):
+    carrinho = get_carrinho()
+    if 0 <= index < len(carrinho):
+        item_removido = carrinho.pop(index)
+        salvar_carrinho(carrinho)
+        flash(f'{item_removido["nome"]} removido do carrinho!', 'success')
+    return redirect(url_for('carrinho'))
+
+@app.route('/atualizar_carrinho', methods=['POST'])
+@login_required
+def atualizar_carrinho():
+    carrinho = get_carrinho()
+    for i, item in enumerate(carrinho):
+        nova_quantidade = int(request.form.get(f'quantidade_{i}', 1))
+        if nova_quantidade > 0:
+            item['quantidade'] = nova_quantidade
+        else:
+            carrinho.pop(i)
+            break
+    
+    salvar_carrinho(carrinho)
+    flash('Carrinho atualizado!', 'success')
+    return redirect(url_for('carrinho'))
+
 @app.route('/carrinho')
 @login_required
-def carrinho(): return render_template('carrinho.html')
+def carrinho():
+    carrinho_itens = get_carrinho()
+    total = calcular_total_carrinho()
+    return render_template('carrinho.html', carrinho=carrinho_itens, total=total)
 
-@app.route('/perfil')
+@app.route('/finalizar_pedido', methods=['GET', 'POST'])
 @login_required
-def perfil(): return render_template('perfil.html')
+def finalizar_pedido():
+    carrinho_itens = get_carrinho()
+    
+    if not carrinho_itens:
+        flash('Seu carrinho está vazio!', 'error')
+        return redirect(url_for('cardapio'))
+    
+    if request.method == 'POST':
+        endereco_entrega = request.form.get('endereco_entrega', '').strip()
+        observacoes = request.form.get('observacoes', '')
+        
+        if not endereco_entrega and not current_user.endereco:
+            flash('Por favor, informe um endereço de entrega.', 'error')
+            return redirect(url_for('finalizar_pedido'))
+        
+        # Usa o endereço do usuário se não foi informado um novo
+        endereco_final = endereco_entrega if endereco_entrega else current_user.endereco
+        
+        # Cria o pedido
+        total_pedido = calcular_total_carrinho()
+        novo_pedido = Pedido(
+            user_id=current_user.id,
+            total=total_pedido,
+            endereco_entrega=endereco_final,
+            status='confirmado'
+        )
+        
+        db.session.add(novo_pedido)
+        db.session.flush()  # Para obter o ID do pedido
+        
+        # Adiciona os itens do pedido
+        for item in carrinho_itens:
+            item_pedido = ItemPedido(
+                pedido_id=novo_pedido.id,
+                marmita_id=item['marmita_id'],
+                quantidade=item['quantidade'],
+                preco_unitario=item['preco'],
+                status_item='enviando_restaurante',
+                observacoes=observacoes
+            )
+            db.session.add(item_pedido)
+        
+        db.session.commit()
+        
+        # Limpa o carrinho
+        session.pop('carrinho', None)
+        
+        flash('Pedido realizado com sucesso! Acompanhe o status em "Meus Pedidos".', 'success')
+        return redirect(url_for('pedidos'))
+    
+    total = calcular_total_carrinho()
+    return render_template('finalizar_pedido.html', carrinho=carrinho_itens, total=total)
 
 @app.route('/pedidos')
 @login_required
 def pedidos():
     user_pedidos = Pedido.query.filter_by(user_id=current_user.id).order_by(Pedido.data_pedido.desc()).all()
     return render_template('pedidos.html', pedidos=user_pedidos)
+
+@app.route('/detalhes_pedido/<int:pedido_id>')
+@login_required
+def detalhes_pedido(pedido_id):
+    pedido = Pedido.query.get_or_404(pedido_id)
+    
+    # Verifica se o pedido pertence ao usuário logado
+    if pedido.user_id != current_user.id:
+        flash('Acesso não autorizado!', 'error')
+        return redirect(url_for('pedidos'))
+    
+    itens_pedido = ItemPedido.query.filter_by(pedido_id=pedido_id).all()
+    return render_template('detalhes_pedido.html', pedido=pedido, itens_pedido=itens_pedido)
+
+# NOVAS ROTAS PARA A COMANDA
+@app.route('/area_empresa')
+@login_required
+def area_empresa():
+    # Verifica se é uma empresa
+    if not hasattr(current_user, 'nome'):
+        flash('Acesso não autorizado para esta área!', 'error')
+        return redirect(url_for('index'))
+    
+    # Busca todos os itens de pedido que precisam ser preparados
+    itens_pedido = ItemPedido.query.join(Pedido).filter(
+        ItemPedido.status_item.in_(['enviando_restaurante', 'em_andamento', 'entregando'])
+    ).order_by(ItemPedido.id.desc()).all()
+    
+    return render_template('area_empresa.html', itens_pedido=itens_pedido)
+
+@app.route('/atualizar_status_item/<int:item_id>/<novo_status>')
+@login_required
+def atualizar_status_item(item_id, novo_status):
+    # Verifica se é uma empresa
+    if not hasattr(current_user, 'nome'):
+        flash('Acesso não autorizado!', 'error')
+        return redirect(url_for('index'))
+    
+    item = ItemPedido.query.get_or_404(item_id)
+    
+    # Verifica se o status é válido
+    status_validos = ['enviando_restaurante', 'em_andamento', 'entregando', 'concluido']
+    if novo_status not in status_validos:
+        flash('Status inválido!', 'error')
+        return redirect(url_for('area_empresa'))
+    
+    item.status_item = novo_status
+    db.session.commit()
+    
+    flash(f'Status do item atualizado para {novo_status.replace("_", " ").title()}!', 'success')
+    return redirect(url_for('area_empresa'))
+
+@app.route('/comanda_detalhes/<int:pedido_id>')
+@login_required
+def comanda_detalhes(pedido_id):
+    # Verifica se é uma empresa
+    if not hasattr(current_user, 'nome'):
+        flash('Acesso não autorizado!', 'error')
+        return redirect(url_for('index'))
+    
+    pedido = Pedido.query.get_or_404(pedido_id)
+    itens_pedido = ItemPedido.query.filter_by(pedido_id=pedido_id).all()
+    
+    return render_template('comanda_detalhes.html', pedido=pedido, itens_pedido=itens_pedido)
+
+# Rotas simples
+@app.route('/perfil')
+@login_required
+def perfil(): 
+    return render_template('perfil.html')
 
 # Dados de exemplo
 def add_sample_data():
@@ -228,13 +432,32 @@ def add_sample_data():
             Marmita(nome='Marmita Kids', descricao='Arroz, feijão, carne moída e batata frita', preco=20.90, categoria='kids', tamanho='pequena')
         ]
         db.session.add_all(sample_marmitas)
+        
+        # Criar empresa de exemplo
+        if Empresa.query.filter_by(nome='Restaurante Exemplo').first() is None:
+            empresa = Empresa(
+                nome='Restaurante Exemplo',
+                email='restaurante@exemplo.com',
+                password=generate_password_hash('123456'),
+                endereco='Rua Exemplo, 123'
+            )
+            db.session.add(empresa)
+        
         db.session.commit()
         print("Dados de exemplo adicionados")
 
+# Função para deletar e recriar o banco (APENAS PARA DESENVOLVIMENTO)
+def recreate_database():
+    print("Recriando banco de dados...")
+    db.drop_all()
+    db.create_all()
+    add_sample_data()
+    print("Banco de dados recriado com sucesso!")
+
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()
-        add_sample_data()
+        # CORREÇÃO: Recriar o banco de dados para incluir as novas colunas
+        recreate_database()
     
     # CORREÇÃO PARA O RENDER
     port = int(os.environ.get('PORT', 5000))

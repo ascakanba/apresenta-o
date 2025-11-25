@@ -10,6 +10,9 @@
             </h1>
             <p class="lead">Pratique uma alimentação saudável sem complicação. Receba marmitas deliciosas e balanceadas na sua casa.</p>
             <a href="{{ url_for('cardapio') }}" class="btn btn-success btn-lg">Ver Cardápio</a>
+            {% if not current_user.is_authenticated %}
+            <a href="{{ url_for('register') }}" class="btn btn-outline-success btn-lg ms-2">Cadastre-se</a>
+            {% endif %}
         </div>
         <div class="col-md-6 text-center">
             <span style="font-size: 8rem;">🍱</span>
@@ -41,7 +44,7 @@
                     {% if current_user.is_authenticated %}
                         <a href="{{ url_for('adicionar_carrinho', marmita_id=marmita.id) }}" class="btn btn-outline-success mt-3">Adicionar</a>
                     {% else %}
-                        <a href="{{ url_for('login') }}" class="btn btn-outline-success mt-3">Fazer Login</a>
+                        <a href="{{ url_for('login') }}" class="btn btn-outline-warning mt-3">Faça Login para Comprar</a>
                     {% endif %}
                 </div>
             </div>
@@ -70,5 +73,14 @@
             <p>Qualidade que cabe no seu bolso</p>
         </div>
     </div>
+    
+    {% if not current_user.is_authenticated %}
+    <div class="text-center mt-4">
+        <h4>Pronto para pedir?</h4>
+        <p>Cadastre-se ou faça login para começar a pedir suas marmitas!</p>
+        <a href="{{ url_for('register') }}" class="btn btn-success btn-lg">Cadastrar</a>
+        <a href="{{ url_for('login') }}" class="btn btn-outline-success btn-lg">Fazer Login</a>
+    </div>
+    {% endif %}
 </section>
 {% endblock %}

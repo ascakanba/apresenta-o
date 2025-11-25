@@ -21,15 +21,14 @@
 
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
-
                     {% if current_user.is_authenticated %}
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('adicionar_prato') }}">Adicionar Prato</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('meus_pratos') }}">Meus Pratos</a>
-    </li>
-        {% endif %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('adicionar_prato') }}">Adicionar Prato</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('meus_pratos') }}">Meus Pratos</a>
+                        </li>
+                    {% endif %}
 
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('index') }}">Início</a>
@@ -37,6 +36,15 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('cardapio') }}">Cardápio</a>
                     </li>
+
+                    <!-- CORRIGIDO: Verificação simplificada para Área da Empresa -->
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.__class__.__name__ == 'Empresa' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('area_empresa') }}">Área da Empresa</a>
+                        </li>
+                        {% endif %}
+                    {% endif %}
                 </ul>
                 
                 <ul class="navbar-nav">
@@ -48,7 +56,13 @@
                             <a class="nav-link" href="{{ url_for('pedidos') }}">Meus Pedidos</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('perfil') }}">{{ current_user.username }}</a>
+                            <a class="nav-link" href="{{ url_for('perfil') }}">
+                                {% if current_user.__class__.__name__ == 'Empresa' %}
+                                    {{ current_user.nome }}
+                                {% else %}
+                                    {{ current_user.username }}
+                                {% endif %}
+                            </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('logout') }}">Sair</a>
@@ -86,7 +100,7 @@
     </main>
 
     <!-- Footer -->
- <footer class="footer bg-dark text-white py-4">
+    <footer class="footer bg-dark text-white py-4">
         <div class="container">
             <div class="row">
                 <div class="col-md-6">
